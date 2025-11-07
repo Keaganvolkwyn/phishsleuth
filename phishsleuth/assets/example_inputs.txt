@@ -1,0 +1,16 @@
+Suspicious bank notice (text)
+From: "Support Team" <noreply@secure-login-bank123.com>
+Subject: Urgent action required: Account verification
+
+Dear customer,
+Your account will be suspended in 24 hours. Verify now to avoid closure:
+http://secure-login-bank123.com/verify
+---
+Delivery notice (URL)
+https://track-dhl-update-login-confirm.delivery-check.com
+---
+Legit newsletter (text)
+From: "Community" <newsletter@example.com>
+Subject: Welcome to our weekly newsletter!
+
+Thanks for subscribing at our official site. No action required.
