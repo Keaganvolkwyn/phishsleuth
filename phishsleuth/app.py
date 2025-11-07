@@ -14,6 +14,12 @@ from sleuth.ai_reason import ai_available, AI_VERSION
 BASE_DIR = Path(__file__).parent
 
 # Sidebar status (debug)
+import sleuth.ai_reason as _air
+import sleuth.heuristics as _heur
+
+st.sidebar.write("AI file:", getattr(_air, "__file__", "?"))
+st.sidebar.write("Heur file:", getattr(_heur, "__file__", "?"))
+
 st.sidebar.markdown("### AI status")
 st.sidebar.write("Key detected:", bool(ai_available()))
 
