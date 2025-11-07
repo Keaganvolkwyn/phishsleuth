@@ -8,6 +8,8 @@ st.set_page_config(page_title="PhishSleuth", page_icon="🕵️‍♂️", layou
 from sleuth.ai_reason import ai_available
 from sleuth.url_tools import extract_urls
 from sleuth.heuristics import blended_analysis, format_findings
+from sleuth.ai_reason import ai_available, AI_VERSION
+
 
 BASE_DIR = Path(__file__).parent
 
@@ -18,6 +20,10 @@ st.sidebar.write("Key detected:", bool(ai_available()))
 st.title("🕵️‍♂️ PhishSleuth — AI-style Phishing Analyzer (demo)")
 st.markdown("**Demo by Keagan Volkwyn — (ISC)² Conference**")
 st.caption("Paste an email, message, or URL. Get a risk score and the reasons why it may be phishing.")
+st.sidebar.markdown("### AI status")
+st.sidebar.write("Key detected:", bool(ai_available()))
+st.sidebar.write("AI module:", AI_VERSION)
+
 
 with st.expander("What is phishing? (quick primer)", expanded=False):
     st.markdown("""
