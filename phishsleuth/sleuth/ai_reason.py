@@ -1,15 +1,16 @@
-# sleuth/ai_reason.py 1
+# sleuth/ai_reason.py
 from typing import Dict, Any, Optional
 import os, json, re
 
+AI_VERSION = "v3"  # <-- shows in sidebar so we know this file is live
+
 def _get_api_key() -> Optional[str]:
-    # Prefer env var; fall back to st.secrets.get; never raise KeyError
     key = os.getenv("OPENAI_API_KEY")
     if key:
         return key
     try:
         import streamlit as st
-        return st.secrets.get("OPENAI_API_KEY", None)
+        return st.secrets.get("OPENAI_API_KEY", None)  # .get avoids KeyError
     except Exception:
         return None
 
@@ -62,7 +63,6 @@ def ai_judge(content: str, model: str = "gpt-4o") -> Dict[str, Any]:
         if not m:
             return {"score": 0, "rationale": "AI returned no JSON."}
 
-        data = {}
         try:
             data = json.loads(m.group(0))
         except Exception:
