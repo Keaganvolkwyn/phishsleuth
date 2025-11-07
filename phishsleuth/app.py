@@ -84,7 +84,7 @@ if analyze and txt.strip():
     mode = "url" if len(urls) == 1 and urls[0].strip() == txt.strip() else "text"
 
     # You can change the model here if your project lacks access to gpt-4o-mini
-    result = blended_analysis(txt, mode=mode, use_ai=use_ai, model="gpt-4o-mini", blend=0.3)
+    result = blended_analysis(txt, mode=mode, use_ai=use_ai, model="gpt-4o", blend=0.5)
 
     st.subheader("Risk score (blended)")
     st.progress(min(result["score"] / 100, 1.0))
