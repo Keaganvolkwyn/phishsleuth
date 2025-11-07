@@ -116,8 +116,8 @@ def score_and_flags_for_text(text: str):
 
 # --- Blended analysis (rules + optional AI) ----------------------------------
 
-def blended_analysis(inp: str, mode: str = "text", use_ai: bool = True, model: str = "gpt-4o-mini", blend: float = 0.3):
-    """Default: 70% rules + 30% AI (blend=0.3). Set use_ai=False to force rules-only."""
+def blended_analysis(inp: str, mode: str = "text", use_ai: bool = True, model: str = "gpt-4o", blend: float = 0.5):
+    """Default: 50% rules + 50% AI. Robust against AI structure issues."""
     if mode == "url":
         rule_score, findings = score_and_flags_for_url(inp.strip())
     else:
@@ -125,17 +125,26 @@ def blended_analysis(inp: str, mode: str = "text", use_ai: bool = True, model: s
 
     ai_info = {"score": 0, "rationale": "AI disabled."}
     if use_ai and ai_available():
-        ai_info = ai_judge(inp, model=model)
+        ai_info = ai_judge(inp, model=model) or {}
 
-    final = round((1.0 - blend) * rule_score + blend * ai_info["score"])
+    # Defensive parsing
+    ai_score_raw = ai_info.get("score", 0) if isinstance(ai_info, dict) else 0
+    try:
+        ai_score = int(float(ai_score_raw))
+    except Exception:
+        ai_score = 0
+    ai_score = max(0, min(100, ai_score))
+
+    final = round((1.0 - blend) * rule_score + blend * ai_score)
     band = "Low" if final < 30 else "Medium" if final < 60 else "High"
 
     meta = [
         {"label": "Risk band", "detail": f"{band} risk (blended).", "severity": "info", "weight": 0},
         {"label": "Rule score", "detail": f"{rule_score}/100 (heuristics).", "severity": "info", "weight": 0},
-        {"label": "AI score", "detail": f"{ai_info['score']}/100 — {ai_info.get('rationale','')}", "severity": "info", "weight": 0},
+        {"label": "AI score", "detail": f"{ai_score}/100 — {ai_info.get('rationale','') if isinstance(ai_info, dict) else ''}", "severity": "info", "weight": 0},
     ]
     return {"score": final, "findings": meta + findings}
+
 
 def format_findings(findings):
     lines = []
