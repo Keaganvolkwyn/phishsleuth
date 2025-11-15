@@ -22,52 +22,52 @@ HEUR_VERSION = "rules-v1"
 
 URGENT_TERMS = [
     "urgent", "immediately", "asap", "straight away",
-    "within 24 hours", "today", "now", "right away"
+    "within 24 hours", "today", "now", "right away",
 ]
 
 THREAT_TERMS = [
     "account will be closed", "suspended", "locked",
     "last warning", "final notice", "legal action",
-    "fine", "penalty", "lose access", "limited access"
+    "fine", "penalty", "lose access", "limited access",
 ]
 
 CREDENTIAL_TERMS = [
     "login", "log in", "sign in", "verify your account",
     "confirm your account", "update your account",
     "password", "passcode", "one time password", "otp",
-    "security code", "verification code"
+    "security code", "verification code",
 ]
 
 PAYMENT_TERMS = [
     "invoice", "payment", "pay now", "overdue",
     "bank details", "credit card", "debit card",
-    "wire transfer", "bitcoin", "crypto"
+    "wire transfer", "bitcoin", "crypto",
 ]
 
 ATTACHMENT_TERMS = [
     "attachment", "attached", "see attached", "open the attached",
-    ".zip", ".exe", ".html", ".htm", ".pdf"
+    ".zip", ".exe", ".html", ".htm", ".pdf",
 ]
 
 GENERIC_GREETINGS = [
     "dear customer", "dear client", "dear user",
-    "dear valued customer", "dear valued client"
+    "dear valued customer", "dear valued client",
 ]
 
 # Common brands attackers like to impersonate
 BRAND_KEYWORDS = [
     "dhl", "fedex", "ups", "amazon", "paypal",
     "apple", "microsoft", "standard bank", "fnb",
-    "absa", "capitec", "netflix", "facebook", "instagram"
+    "absa", "capitec", "netflix", "facebook", "instagram",
 ]
 
 SUSPICIOUS_TLDS = [
     ".top", ".xyz", ".club", ".click", ".info", ".shop",
-    ".work", ".loan", ".win", ".men", ".kim"
+    ".work", ".loan", ".win", ".men", ".kim",
 ]
 
 URL_SHORTENERS = [
-    "bit.ly", "tinyurl.com", "goo.gl", "t.co", "ow.ly", "is.gd"
+    "bit.ly", "tinyurl.com", "goo.gl", "t.co", "ow.ly", "is.gd",
 ]
 
 
@@ -149,22 +149,6 @@ def _extract_urls(text: str) -> List[str]:
     return re.findall(r"https?://[^\s]+", text)
 
 
-def _score_for_urls(urls: List[str], text_lower: str,
-                    findings: List[Dict[str, Any]]) -> int:
-    score = 0
-    for url in urls:
-        weight, label, detail, severity = _score_single_url(url, text_lower)
-        if weight > 0:
-            findings.append({
-                "label": label,
-                "detail": f"{detail} ({url})",
-                "severity": severity,
-                "weight": weight,
-            })
-            score += weight
-    return min(score, 40)
-
-
 def _score_single_url(url: str, text_lower: str) -> Tuple[int, str, str, str]:
     try:
         parsed = urlparse(url)
@@ -192,11 +176,30 @@ def _score_single_url(url: str, text_lower: str) -> Tuple[int, str, str, str]:
     # Brand impersonation: brand in text, but NOT in domain
     for brand in BRAND_KEYWORDS:
         if brand in text_lower and brand not in host:
-            return 22, "Possible brand impersonation",
-                   f"Mentions {brand.title()} but domain does not match brand.",
-                   "high"
+            return (
+                22,
+                "Possible brand impersonation",
+                f"Mentions {brand.title()} but domain does not match brand.",
+                "high",
+            )
 
     return 0, "", "", ""
+
+
+def _score_for_urls(urls: List[str], text_lower: str,
+                    findings: List[Dict[str, Any]]) -> int:
+    score = 0
+    for url in urls:
+        weight, label, detail, severity = _score_single_url(url, text_lower)
+        if weight > 0:
+            findings.append({
+                "label": label,
+                "detail": f"{detail} ({url})",
+                "severity": severity,
+                "weight": weight,
+            })
+            score += weight
+    return min(score, 40)
 
 
 def score_and_flags_for_text(text: str) -> Tuple[int, List[Dict[str, Any]]]:
