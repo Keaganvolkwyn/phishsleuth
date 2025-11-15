@@ -132,4 +132,4 @@ if analyze and txt.strip():
 elif analyze:
     st.warning("Please paste some text or a URL to analyze.")
 
-st.markdown("---\nMade with ❤️ by Keagan Volkwyn | (ISC)² Conference Demo 2025")
+st.markdown("---\nMade BY Keagan Volkwyn 2025")
