@@ -1,113 +1,111 @@
-import streamlit as st
 from pathlib import Path
 
-# MUST be the first Streamlit command:
-st.set_page_config(page_title="PhishSleuth", page_icon="🕵️‍♂️", layout="centered")
+import streamlit as st
 
-# Imports that do NOT call st.* at import time
-from sleuth.ai_reason import ai_available
+from sleuth.heuristics import analyze_text_or_url, format_findings
 from sleuth.url_tools import extract_urls
-from sleuth.heuristics import blended_analysis, format_findings
-from sleuth.ai_reason import ai_available, AI_VERSION
-
 
 BASE_DIR = Path(__file__).parent
 
-# Sidebar status (debug)
-import sleuth.ai_reason as _air
-import sleuth.heuristics as _heur
+st.set_page_config(page_title="PhishSleuth", page_icon="🕵️‍♂️", layout="centered")
 
-st.sidebar.write("AI file:", getattr(_air, "__file__", "?"))
-st.sidebar.write("Heur file:", getattr(_heur, "__file__", "?"))
-
-st.sidebar.markdown("### AI status")
-st.sidebar.write("Key detected:", bool(ai_available()))
-
-st.title("🕵️‍♂️ PhishSleuth — AI-style Phishing Analyzer (demo)")
+st.title("🕵️‍♂️ PhishSleuth — Rules-based Phishing Analyzer (demo)")
 st.markdown("**Demo by Keagan Volkwyn — (ISC)² Conference**")
-st.caption("Paste an email, message, or URL. Get a risk score and the reasons why it may be phishing.")
-st.sidebar.markdown("### AI status")
-st.sidebar.write("Key detected:", bool(ai_available()))
-st.sidebar.write("AI module:", AI_VERSION)
-
+st.caption("Paste an email, SMS, or URL. Get a risk score and the specific red flags detected.")
 
 with st.expander("What is phishing? (quick primer)", expanded=False):
     st.markdown("""
-**Phishing** is a social-engineering attack that tricks you into doing something risky
+**Phishing** is a social-engineering attack where an attacker tricks you into doing something risky
 (clicking a malicious link, downloading malware, or giving away credentials/OTP). It often uses:
 - Urgency or threats (“Your account will be closed”)
 - Impersonation (spoofed brands, look-alike domains)
 - Suspicious links/attachments
-- Requests for sensitive info
+- Requests for passwords, codes, or payments
 
-This tool uses transparent rules, optionally blended with AI, to produce a **risk score (0–100)**.
+This demo uses transparent **rules** – no AI – to flag common red flags and produce a **risk score (0–100)**.
     """)
 
-# Samples
+# --- Sample selector --------------------------------------------------------
+
 sample_choice = st.selectbox(
     "Need a sample?",
-    ["(none)", "Suspicious bank notice (text)", "Delivery notice (URL)", "Legit newsletter (text)"]
+    ["(none)", "Suspicious bank notice (text)", "Delivery notice (URL)", "Legit newsletter (text)"],
 )
+
 st.session_state.setdefault("input_text", "")
 
 if sample_choice != "(none)":
     try:
-        sample_text = (BASE_DIR / "assets" / "example_inputs.txt").read_text(encoding="utf-8")
-        blocks = sample_text.split("---\n")
-        presets = {
-            b.splitlines()[0].strip(): "\n".join(b.splitlines()[1:]).strip()
-            for b in blocks if b.strip()
-        }
+        sample_path = BASE_DIR / "assets" / "example_inputs.txt"
+        raw = sample_path.read_text(encoding="utf-8")
+        blocks = raw.split("---\n")
+        presets = {}
+        for b in blocks:
+            b = b.strip()
+            if not b:
+                continue
+            lines = b.splitlines()
+            presets[lines[0].strip()] = "\n".join(lines[1:]).strip()
         st.session_state["input_text"] = presets.get(sample_choice, "")
     except FileNotFoundError:
-        st.warning("⚠️ Sample file not found at phishsleuth/assets/example_inputs.txt")
+        st.warning("Sample file not found at assets/example_inputs.txt")
         st.session_state["input_text"] = ""
+
+# --- Main input -------------------------------------------------------------
 
 txt = st.text_area(
     "Paste email text or a URL:",
     value=st.session_state["input_text"],
-    height=240,
-    help="You can paste a full email, SMS, or a single URL."
+    height=260,
+    help="You can paste a full email, SMS, or a single URL.",
 )
 
-# AI toggle
-use_ai_default = ai_available()
-use_ai = st.toggle("Enable AI reasoning (uses API key if set)", value=use_ai_default)
 analyze = st.button("Analyze")
 
-def build_report(result, original_text):
-    lines = [
-        "PhishSleuth report",
-        "Demo by Keagan Volkwyn",
-        "",
-        "Original input:",
-        original_text,
-        "",
-        f"Risk score: {result['score']} / 100",
-        "Findings:"
-    ]
+# --- Run analysis -----------------------------------------------------------
+
+def build_report(result, original_text: str) -> str:
+    lines = []
+    lines.append("PhishSleuth report (rules-only)")
+    lines.append("Demo by Keagan Volkwyn")
+    lines.append("")
+    lines.append("Original input:")
+    lines.append(original_text)
+    lines.append("")
+    lines.append(f"Risk score: {result['score']} / 100")
+    lines.append("Findings:")
     for f in result["findings"]:
         sev = f.get("severity", "info")
-        lines.append(f"- {f.get('label', 'Flag')} ({sev}): {f.get('detail', '')}")
+        lines.append(f"- {f.get('label','Flag')} ({sev}): {f.get('detail','')}")
     return "\n".join(lines)
+
 
 if analyze and txt.strip():
     urls = extract_urls(txt)
     mode = "url" if len(urls) == 1 and urls[0].strip() == txt.strip() else "text"
 
-    # You can change the model here if your project lacks access to gpt-4o-mini
-    result = blended_analysis(txt, mode=mode, use_ai=use_ai, model="gpt-4o", blend=0.5)
+    result = analyze_text_or_url(txt, mode=mode)
 
-    st.subheader("Risk score (blended)")
+    st.subheader("Risk score (rules-based)")
     st.progress(min(result["score"] / 100, 1.0))
     st.markdown(f"### {result['score']} / 100")
 
+    # Build badges from findings
     badges = []
     for f in result["findings"]:
         severity = f.get("severity", "info")
         label = f.get("label", "Flag")
-        color = {"high": "🔴", "medium": "🟠", "low": "🟡", "info": "🟦"}.get(severity, "🟦")
-        badges.append(f"{color} **{label}**")
+        if severity == "high":
+            color = "🔴"
+        elif severity == "medium":
+            color = "🟠"
+        elif severity == "low":
+            color = "🟡"
+        else:
+            color = "🟦"
+        if label not in ("Risk band", "Rule score"):
+            badges.append(f"{color} **{label}**")
+
     if badges:
         st.markdown("**Top signals:** " + " • ".join(badges))
 
@@ -119,11 +117,16 @@ if analyze and txt.strip():
 - Verify the sender via a known, official channel (do **not** use the links or numbers in the message).
 - Hover or long-press links to preview the real destination.
 - Never enter passwords, 2FA codes, or card details from unsolicited requests.
-- If it claims to be your bank, **log in from the official website/app you already trust**.
+- If it claims to be your bank or delivery company, **log in from the official website/app you already trust**.
     """)
 
     report_text = build_report(result, txt)
-    st.download_button("Download report (.txt)", report_text, file_name="phishsleuth_report.txt", mime="text/plain")
+    st.download_button(
+        "Download report (.txt)",
+        report_text,
+        file_name="phishsleuth_report.txt",
+        mime="text/plain",
+    )
     st.code(report_text, language="text")
 
 elif analyze:
